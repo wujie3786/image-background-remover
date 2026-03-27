@@ -18,10 +18,10 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps --ignore-scripts
+        run: yarn install --ignore-engines
 
       - name: Build
-        run: npm run build
+        run: yarn build
         env:
           REMOVE_BG_API_KEY: ${{ secrets.REMOVE_BG_API_KEY }}
 
