@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages:build": "npm install && npm run build",
+    "pages:build": "npm ci --legacy-peer-deps && npm run build",
     "start": "next start",
     "lint": "next lint"
   },
