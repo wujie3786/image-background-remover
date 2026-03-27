@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { REMOVE_BG_API_URL } from '@/lib/constants'
+import { REMOVE_BG_API_URL } from '../../../lib/constants'
 
 export const runtime = 'nodejs'
 

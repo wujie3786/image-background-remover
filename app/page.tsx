@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Uploader from '@/components/Uploader'
-import ImagePreview from '@/components/ImagePreview'
-import LoadingSpinner from '@/components/LoadingSpinner'
+import Uploader from '../components/Uploader'
+import ImagePreview from '../components/ImagePreview'
+import LoadingSpinner from '../components/LoadingSpinner'
 
 export default function Home() {
   const [originalImage, setOriginalImage] = useState<string | null>(null)
