@@ -1,0 +1,26 @@
+# Cloudflare Pages configuration for image-bg-remover
+
+# Project name (optional, will use Cloudflare Pages project name if not set)
+name = "image-bg-remover"
+
+# Compatibility flags
+compatibility_flags = ["nodejs_compat"]
+
+# Build configuration (for local development with wrangler pages dev)
+[build]
+command = "npm run pages:build"
+cwd = "."
+watch_dir = "./"
+
+# Environment variables (for local development)
+# Note: In production, set these in Cloudflare Dashboard
+# [vars]
+# REMOVE_BG_API_KEY = ""
+
+# Build configuration
+[build.upload]
+format = "modules"
+main = "./.vercel/output/static/_worker.js"
+rules = [
+  { type = "ESModule", globs = ["**/*.js", "**/*.mjs"], fallthrough = true }
+]
