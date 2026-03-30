@@ -13,8 +13,4 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "image-bg-remover-users"
-database_id = "YOUR_D1_DATABASE_ID"  # Replace with your D1 database ID after creation
-
-# Environment variables (set in Cloudflare Pages dashboard)
-# NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
-# JWT_SECRET=your_jwt_secret_at_least_32_chars
+database_id = "252ad9d4-4e09-4804-b31b-2a22508d1732"
