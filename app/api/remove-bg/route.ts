@@ -1,10 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { REMOVE_BG_API_URL } from '../../../lib/constants'
+import { REMOVE_BG_API_URL } from '@/lib/constants'
+import { verifySessionToken, parseCookies } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
+async function verifyAuth(request: NextRequest) {
+  const cookieHeader = request.headers.get('cookie') || ''
+  const cookies = parseCookies(cookieHeader)
+  const sessionToken = cookies.session
+
+  if (!sessionToken) {
+    return { authorized: false, userId: null }
+  }
+
+  const session = await verifySessionToken(sessionToken)
+  if (!session) {
+    return { authorized: false, userId: null }
+  }
+
+  // Check if session exists in DB and not expired
+  const d1 = request.env.DB as D1Database
+  if (!d1) {
+    return { authorized: false, userId: null }
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const dbSession = await d1
+    .prepare('SELECT * FROM sessions WHERE id = ? AND expires_at > ?')
+    .bind(session.sessionId, now)
+    .first()
+
+  if (!dbSession) {
+    return { authorized: false, userId: null }
+  }
+
+  return { authorized: true, userId: session.userId }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const auth = await verifyAuth(request)
+    if (!auth.authorized) {
+      return NextResponse.json(
+        { error: 'Please sign in to use this feature', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
     const imageFile = formData.get('image') as File
 

@@ -1,13 +1,20 @@
 # Cloudflare Pages configuration for image-bg-remover
 
-# Project name (optional, will use Cloudflare Pages project name if not set)
 name = "image-bg-remover"
 
-# Pages build output directory
-pages_build_output_dir = ".vercel/output/static"
+# Build output directory for Next.js (Cloudflare Pages native support)
+pages_build_output_dir = ".next"
 
-# Compatibility date
 compatibility_date = "2026-03-27"
 
-# Compatibility flags
 compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "image-bg-remover-users"
+database_id = "YOUR_D1_DATABASE_ID"  # Replace with your D1 database ID after creation
+
+# Environment variables (set in Cloudflare Pages dashboard)
+# NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+# JWT_SECRET=your_jwt_secret_at_least_32_chars
