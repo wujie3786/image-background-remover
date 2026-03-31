@@ -26,19 +26,11 @@ jobs:
         run: pnpm install
 
       - name: Build
-        run: |
-          rm -rf .next
-          pnpm build
+        run: pnpm build
         env:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           REMOVE_BG_API_KEY: ${{ secrets.REMOVE_BG_API_KEY }}
-
-      - name: Deploy to Cloudflare Pages
-        run: |
-          rm -rf .next/cache
-          npx wrangler pages deploy .next --project-name=image-background-remover --branch=main --commit-hash=${{ github.sha }} --commit-message="${{ github.event.head_commit.message }}"
-        env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
