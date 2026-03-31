@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "opennextjs-cloudflare",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -19,7 +19,6 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.18.0",
     "@types/node": "^22.14.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
