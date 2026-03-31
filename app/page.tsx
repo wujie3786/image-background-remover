@@ -94,7 +94,7 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
-        <div className="flex justify-between items-center mb-12">
+        <div className="relative flex justify-between items-center mb-12">
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
               Background Remover
@@ -105,7 +105,7 @@ export default function Home() {
           </div>
           
           {/* Auth Section */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-4 right-4 z-10">
             {user ? (
               <UserMenu user={user} onLogout={handleLogout} />
             ) : (
