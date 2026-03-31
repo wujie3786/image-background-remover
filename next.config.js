@@ -9,14 +9,31 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Optimize bundle size for Cloudflare Pages
   swcMinify: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Reduce bundle size
   experimental: {
     optimizePackageImports: ['react', 'react-dom'],
+  },
+  // Split chunks to avoid 25MB limit
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          commons: {
+            name: 'commons',
+            chunks: 'all',
+            minChunks: 2,
+            maxSize: 20000000, // 20MB max
+          },
+        },
+      };
+    }
+    return config;
   },
 }
 
