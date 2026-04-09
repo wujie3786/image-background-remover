@@ -14,6 +14,8 @@ interface User {
   picture?: string
 }
 
+const SESSION_KEY = 'ibr_user_session'
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -22,40 +24,41 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Check auth status on mount
+  // Check auth status from localStorage on mount
   useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/session')
-      const data = await response.json()
-      if (data.authenticated && data.user) {
-        setUser(data.user)
+      const stored = localStorage.getItem(SESSION_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        setUser(parsed)
       }
     } catch (err) {
-      console.error('Auth check failed:', err)
+      console.error('Failed to load session:', err)
     } finally {
       setCheckingAuth(false)
     }
-  }
+  }, [])
 
   const handleLogin = (loggedInUser: User) => {
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(loggedInUser))
+    } catch (err) {
+      console.error('Failed to save session:', err)
+    }
     setUser(loggedInUser)
   }
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-      setUser(null)
-      // Reset images on logout
-      setOriginalImage(null)
-      setProcessedImage(null)
-      setError(null)
+      localStorage.removeItem(SESSION_KEY)
     } catch (err) {
-      console.error('Logout failed:', err)
+      console.error('Failed to clear session:', err)
     }
+    setUser(null)
+    // Reset images on logout
+    setOriginalImage(null)
+    setProcessedImage(null)
+    setError(null)
   }
 
   const handleImageUpload = (file: File) => {
@@ -103,7 +106,7 @@ export default function Home() {
               Remove image backgrounds instantly with AI
             </p>
           </div>
-          
+
           {/* Auth Section */}
           <div className="absolute top-4 right-4 z-10">
             {user ? (

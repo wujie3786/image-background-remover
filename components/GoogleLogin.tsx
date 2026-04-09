@@ -9,21 +9,35 @@ interface GoogleLoginButtonProps {
   onError: () => void
 }
 
+function decodeJWT(token: string): any {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(
+      atob(base64).split('').map((c) =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join('')
+    )
+    return JSON.parse(jsonPayload)
+  } catch {
+    return null
+  }
+}
+
 function LoginButton({ onSuccess, onError }: GoogleLoginButtonProps) {
   const handleSuccess = async (credentialResponse: any) => {
     try {
-      const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: credentialResponse.credential }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        onSuccess(data.user)
-      } else {
+      const payload = decodeJWT(credentialResponse.credential)
+      if (!payload) {
         onError()
+        return
       }
+      onSuccess({
+        id: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
+      })
     } catch {
       onError()
     }
