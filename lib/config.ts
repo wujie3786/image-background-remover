@@ -1,0 +1,1 @@
+export const API_BASE = 'https://image-bg-remover-api.wujie3786.workers.dev'
