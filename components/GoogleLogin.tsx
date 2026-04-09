@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 import { API_BASE } from '../lib/config'
 
@@ -7,37 +8,41 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
 
 interface GoogleLoginButtonProps {
   onSuccess: (user: { id: string; email?: string; name?: string; picture?: string }) => void
-  onError: () => void
+  onError: (msg?: string) => void
 }
 
 function LoginButton({ onSuccess, onError }: GoogleLoginButtonProps) {
+  const [loading, setLoading] = useState(false)
+
   const handleSuccess = async (credentialResponse: any) => {
+    if (loading) return
+    setLoading(true)
     try {
       const res = await fetch(`${API_BASE}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: credentialResponse.credential }),
       })
-
       if (res.ok) {
         const data = await res.json()
-        // Store session token locally
-        try {
-          localStorage.setItem('ibr_session', data.token)
-        } catch {}
+        try { localStorage.setItem('ibr_session', data.token) } catch {}
         onSuccess(data.user)
       } else {
-        onError()
+        const errData = await res.json().catch(() => ({}))
+        onError(errData.error || '登录失败，请重试')
       }
-    } catch {
-      onError()
+    } catch (err: any) {
+      console.error('Auth fetch error:', err)
+      onError('网络连接失败，请检查网络后重试')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
     <GoogleLogin
       onSuccess={handleSuccess}
-      onError={onError}
+      onError={() => onError('Google 登录失败，请重试')}
       useOneTap
       theme="outline"
       size="large"

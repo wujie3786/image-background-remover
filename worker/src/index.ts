@@ -443,6 +443,13 @@ export default {
 
     let response: Response
 
+    // Health check endpoint
+    if (path === '/api/health') {
+      return json({ ok: true, ts: Date.now() })
+    }
+
+
+
     if (path.startsWith('/api/auth')) {
       response = await handleAuth(request, env)
     } else if (path.startsWith('/api/user/profile')) {

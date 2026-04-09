@@ -45,6 +45,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
+  const [apiConnected, setApiConnected] = useState(true)
   const [stats, setStats] = useState<Stats | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [originalImage, setOriginalImage] = useState<string | null>(null)
@@ -54,6 +55,11 @@ export default function Home() {
 
   // Load session + fetch stats on mount
   useEffect(() => {
+    // Quick API connectivity check
+    fetch(`${API_BASE}/api/health`)
+      .then(r => r.ok ? setApiConnected(true) : setApiConnected(false))
+      .catch(() => setApiConnected(false))
+
     const loadSession = async () => {
       const token = localStorage.getItem(SESSION_KEY)
       if (!token) {
@@ -221,7 +227,7 @@ export default function Home() {
               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
                 <GoogleLoginButton
                   onSuccess={handleLogin}
-                  onError={() => setError('登录失败，请重试。')}
+                  onError={(msg) => setError(msg || '登录失败，请重试。')}
                 />
               </div>
             )}
@@ -253,6 +259,13 @@ export default function Home() {
         {!user && !checkingAuth && (
           <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4 text-center">
             登录后可使用工具 · 每日免费 {5} 次 · 无需信用卡
+          </div>
+        )}
+
+        {/* API Connection Error */}
+        {!apiConnected && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
+            ⚠️ 无法连接到服务器，请检查网络后重试
           </div>
         )}
 
