@@ -3,6 +3,8 @@
  * Handles: user auth, profile, usage tracking
  */
 
+import type { D1Database } from '@cloudflare/workers-types'
+
 const GOOGLE_CLIENT_ID = '681632994673-pg2atmmesfellsrrqkuu3j4imh37gm6e.apps.googleusercontent.com'
 // Fallback secret for dev; in production set JWT_SECRET via wrangler secrets
 const JWT_SECRET = 'dev-secret-change-in-production-must-be-at-least-32-chars'
@@ -221,8 +223,8 @@ async function verifyGoogleToken(token: string, googleClientId: string): Promise
     const valid = await crypto.subtle.verify(
       { name: 'RSASSA-PKCS1-v1_5' },
       publicKey,
-      signatureBytes,
-      dataBytes
+      signatureBytes as unknown as ArrayBuffer,
+      dataBytes as unknown as ArrayBuffer
     )
     if (!valid) return null
 
@@ -367,7 +369,7 @@ async function handleAuth(request: Request, env: Env) {
   // P2-7: Set HttpOnly cookie for XSS protection (token still returned in body for client storage)
   const cookieHeader = `ibr_session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`
 
-  const body = JSON.stringify({
+  const responseBody = JSON.stringify({
     token: sessionToken,
     user: {
       id: user.id,
@@ -378,7 +380,7 @@ async function handleAuth(request: Request, env: Env) {
     },
   })
 
-  return new Response(body, {
+  return new Response(responseBody, {
     headers: {
       'Content-Type': 'application/json',
       'Set-Cookie': cookieHeader,
