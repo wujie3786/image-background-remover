@@ -28,7 +28,10 @@ interface Stats {
 const SESSION_KEY = 'ibr_session'
 const USER_KEY = 'ibr_user'
 
+// P2-7: Token stored in localStorage for API auth; HttpOnly cookie is set by server
+// but not readable by JS (browser auto-sends it with requests if on same domain)
 async function apiFetch(path: string, options: RequestInit = {}) {
+  // Read token from localStorage (set by server response body after login)
   const token = localStorage.getItem(SESSION_KEY)
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -38,6 +41,8 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   if (res.status === 401) {
     localStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem(USER_KEY)
+    if (typeof document !== 'undefined') document.cookie = 'ibr_session=; Max-Age=0; Path=/'
     window.location.reload()
     return null
   }
@@ -72,11 +77,11 @@ export default function Home() {
         if (res && res.ok) {
           const data = await res.json()
           setUser(data)
-          // Also persist user data separately
           try { localStorage.setItem(USER_KEY, JSON.stringify(data)) } catch {}
         } else {
           localStorage.removeItem(SESSION_KEY)
           localStorage.removeItem(USER_KEY)
+          if (typeof document !== 'undefined') document.cookie = 'ibr_session=; Max-Age=0; Path=/'
         }
       } catch (err) {
         console.error('Auth check failed:', err)
@@ -117,6 +122,7 @@ export default function Home() {
   const handleLogout = async () => {
     localStorage.removeItem(SESSION_KEY)
     localStorage.removeItem(USER_KEY)
+    if (typeof document !== 'undefined') document.cookie = 'ibr_session=; Max-Age=0; Path=/'
     setUser(null)
     setStats(null)
     setOriginalImage(null)

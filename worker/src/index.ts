@@ -4,9 +4,8 @@
  */
 
 const GOOGLE_CLIENT_ID = '681632994673-pg2atmmesfellsrrqkuu3j4imh37gm6e.apps.googleusercontent.com'
-const JWT_SECRET = typeof globalThis !== 'undefined'
-  ? (process.env.JWT_SECRET || 'dev-secret-change-in-production-must-be-at-least-32-chars')
-  : 'dev-secret-change-in-production-must-be-at-least-32-chars'
+// Fallback secret for dev; in production set JWT_SECRET via wrangler secrets
+const JWT_SECRET = 'dev-secret-change-in-production-must-be-at-least-32-chars'
 
 // Free: 5/day, Pro: 50/day
 const FREE_DAILY_LIMIT = 5
@@ -14,6 +13,8 @@ const PRO_DAILY_LIMIT = 50
 
 interface Env {
   DB: D1Database
+  GOOGLE_CLIENT_ID?: string
+  JWT_SECRET?: string
 }
 
 interface JWTPayload {
@@ -81,23 +82,23 @@ function makeSessionToken(userId: string, sessionId: string): string {
   return `${data}.sig`
 }
 
-async function makeSignedSessionToken(userId: string, sessionId: string): Promise<string> {
+async function makeSignedSessionToken(userId: string, sessionId: string, jwtSecret: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
   const exp = now + 7 * 24 * 60 * 60 // 7 days
   const header = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
   const payload = base64UrlEncode(JSON.stringify({ userId, sessionId, exp, iat: now }))
   const data = `${header}.${payload}`
-  const signature = await hmacSign(data, JWT_SECRET)
+  const signature = await hmacSign(data, jwtSecret)
   return `${data}.${signature}`
 }
 
-async function parseSessionToken(token: string): Promise<{ userId: string; sessionId: string; timestamp: number } | null> {
+async function parseSessionToken(token: string, jwtSecret: string): Promise<{ userId: string; sessionId: string; timestamp: number } | null> {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
     const [header, payload, signature] = parts
     const data = `${header}.${payload}`
-    const valid = await hmacVerify(signature, data, JWT_SECRET)
+    const valid = await hmacVerify(signature, data, jwtSecret)
     if (!valid) return null
     const decoded = JSON.parse(base64UrlDecode(payload)) as { userId: string; sessionId: string; exp: number; iat: number }
     const now = Math.floor(Date.now() / 1000)
@@ -262,7 +263,8 @@ async function getAuthenticatedUser(request: Request, env: Env): Promise<User | 
   // 2. Session token - contains userId
 
   // First try as session token
-  const session = await parseSessionToken(bearerToken)
+  const jwtSecret = env.JWT_SECRET || JWT_SECRET
+  const session = await parseSessionToken(bearerToken, jwtSecret)
   if (session) {
     const result = await env.DB
       .prepare('SELECT * FROM users WHERE id = ?')
@@ -354,9 +356,14 @@ async function handleAuth(request: Request, env: Env) {
   if (!user) return createError(500, 'User not found')
 
   // Generate a signed session token with session ID
+  const jwtSecret = env.JWT_SECRET || JWT_SECRET
   const sessionId = crypto.randomUUID()
-  const sessionToken = await makeSignedSessionToken(user.id, sessionId)
-  return json({
+  const sessionToken = await makeSignedSessionToken(user.id, sessionId, jwtSecret)
+
+  // P2-7: Set HttpOnly cookie for XSS protection (token still returned in body for client storage)
+  const cookieHeader = `ibr_session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`
+
+  const body = JSON.stringify({
     token: sessionToken,
     user: {
       id: user.id,
@@ -364,6 +371,13 @@ async function handleAuth(request: Request, env: Env) {
       name: user.name,
       picture: user.picture,
       plan: user.plan,
+    },
+  })
+
+  return new Response(body, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Set-Cookie': cookieHeader,
     },
   })
 }
