@@ -2,6 +2,7 @@ name = "image-bg-remover-api"
 main = "src/index.ts"
 compatibility_date = "2026-03-27"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
 
 [[d1_databases]]
 binding = "DB"
@@ -9,5 +10,4 @@ database_name = "image-bg-remover-users"
 database_id = "252ad9d4-4e09-4804-b31b-2a22508d1732"
 
 [vars]
-# Public OAuth client ID - add your own value here for local dev
 GOOGLE_CLIENT_ID = "681632994673-pg2atmmesfellsrrqkuu3j4imh37gm6e.apps.googleusercontent.com"

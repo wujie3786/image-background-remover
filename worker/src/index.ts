@@ -6,8 +6,8 @@
 import type { D1Database } from '@cloudflare/workers-types'
 
 const GOOGLE_CLIENT_ID = '681632994673-pg2atmmesfellsrrqkuu3j4imh37gm6e.apps.googleusercontent.com'
-// Fallback secret for dev; in production set JWT_SECRET via wrangler secrets
-const JWT_SECRET = 'dev-secret-change-in-production-must-be-at-least-32-chars'
+// ⚠️ DEV-ONLY fallback - production must set JWT_SECRET via `wrangler secret put JWT_SECRET`
+const JWT_SECRET = '__dev_fallback_do_not_use_in_prod__'
 
 function getGoogleClientId(env: Env): string {
   return env.GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID
