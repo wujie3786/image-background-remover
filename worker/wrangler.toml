@@ -7,3 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "image-bg-remover-users"
 database_id = "252ad9d4-4e09-4804-b31b-2a22508d1732"
+
+[vars]
+# Public OAuth client ID - add your own value here for local dev
+GOOGLE_CLIENT_ID = "681632994673-pg2atmmesfellsrrqkuu3j4imh37gm6e.apps.googleusercontent.com"

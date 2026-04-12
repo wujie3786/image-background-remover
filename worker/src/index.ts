@@ -7,6 +7,10 @@ const GOOGLE_CLIENT_ID = '681632994673-pg2atmmesfellsrrqkuu3j4imh37gm6e.apps.goo
 // Fallback secret for dev; in production set JWT_SECRET via wrangler secrets
 const JWT_SECRET = 'dev-secret-change-in-production-must-be-at-least-32-chars'
 
+function getGoogleClientId(env: Env): string {
+  return env.GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID
+}
+
 // Free: 5/day, Pro: 50/day
 const FREE_DAILY_LIMIT = 5
 const PRO_DAILY_LIMIT = 50
@@ -199,7 +203,7 @@ async function getGooglePublicKey(kid: string): Promise<CryptoKey | null> {
   return publicKey
 }
 
-async function verifyGoogleToken(token: string): Promise<JWTPayload | null> {
+async function verifyGoogleToken(token: string, googleClientId: string): Promise<JWTPayload | null> {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
@@ -230,7 +234,7 @@ async function verifyGoogleToken(token: string): Promise<JWTPayload | null> {
 
     // Check audience
     const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud]
-    if (!aud.includes(GOOGLE_CLIENT_ID)) return null
+    if (!aud.includes(googleClientId)) return null
 
     // Check issuer
     if (payload.iss !== 'https://accounts.google.com' && payload.iss !== 'accounts.google.com') return null
@@ -274,7 +278,7 @@ async function getAuthenticatedUser(request: Request, env: Env): Promise<User | 
   }
 
   // Try as Google credential (first-time auth)
-  const payload = await verifyGoogleToken(bearerToken)
+  const payload = await verifyGoogleToken(bearerToken, getGoogleClientId(env))
   if (!payload) return null
 
   const result = await env.DB
@@ -304,7 +308,7 @@ async function handleAuth(request: Request, env: Env) {
   }
 
   // Verify Google token
-  const payload = await verifyGoogleToken(credential)
+  const payload = await verifyGoogleToken(credential, getGoogleClientId(env))
   if (!payload) {
     return createError(401, 'Invalid token')
   }

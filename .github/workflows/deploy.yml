@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Pages + Worker API
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,14 +26,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Build Next.js frontend
         run: pnpm build
         env:
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          REMOVE_BG_API_KEY: ${{ secrets.REMOVE_BG_API_KEY }}
 
+      # ── Deploy Worker API ───────────────────────────────────────────────────
+      - name: Deploy Worker API
+        run: |
+          cd worker
+          # Set JWT_SECRET as wrangler secret
+          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --name image-bg-remover-api
+          # Deploy worker
+          npx wrangler deploy --keep-vars
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # ── Deploy Frontend to Cloudflare Pages ────────────────────────────────
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy out --project-name=image-background-remover
         env:
