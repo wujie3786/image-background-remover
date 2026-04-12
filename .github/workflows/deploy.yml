@@ -35,9 +35,6 @@ jobs:
       - name: Deploy Worker API
         run: |
           cd worker
-          # Set JWT_SECRET as wrangler secret
-          echo "${{ secrets.JWT_SECRET }}" | npx wrangler secret put JWT_SECRET --name image-bg-remover-api
-          # Deploy worker
           npx wrangler deploy --keep-vars
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
