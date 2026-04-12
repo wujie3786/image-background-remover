@@ -26,6 +26,7 @@ interface Stats {
 }
 
 const SESSION_KEY = 'ibr_session'
+const USER_KEY = 'ibr_user'
 
 async function apiFetch(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem(SESSION_KEY)
@@ -71,8 +72,11 @@ export default function Home() {
         if (res && res.ok) {
           const data = await res.json()
           setUser(data)
+          // Also persist user data separately
+          try { localStorage.setItem(USER_KEY, JSON.stringify(data)) } catch {}
         } else {
           localStorage.removeItem(SESSION_KEY)
+          localStorage.removeItem(USER_KEY)
         }
       } catch (err) {
         console.error('Auth check failed:', err)
@@ -100,17 +104,19 @@ export default function Home() {
   }, [user])
 
   const handleLogin = async (loggedInUser: User) => {
-    // Save to localStorage for offline fallback
+    // Token is already saved by GoogleLogin component in localStorage under ibr_session
+    // Here we just store the user object separately
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(loggedInUser))
+      localStorage.setItem(USER_KEY, JSON.stringify(loggedInUser))
     } catch (err) {
-      console.error('Failed to save session:', err)
+      console.error('Failed to save user:', err)
     }
     setUser(loggedInUser)
   }
 
   const handleLogout = async () => {
     localStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem(USER_KEY)
     setUser(null)
     setStats(null)
     setOriginalImage(null)
