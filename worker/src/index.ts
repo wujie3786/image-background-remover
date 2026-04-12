@@ -460,22 +460,43 @@ async function handleUse(request: Request, env: Env) {
   const today = getToday()
   const dailyLimit = getDailyLimit(user.plan)
 
-  // Get or create today's usage record
-  const existing = await env.DB
-    .prepare('SELECT count FROM usage WHERE user_id = ? AND date = ?')
-    .bind(user.id, today)
-    .first<{ count: number }>()
+  // P1-5 Fix: Atomic conditional update to prevent race conditions
+  // Only update if count < limit; returns affected rows (0 if limit reached)
+  const result = await env.DB
+    .prepare(
+      'UPDATE usage SET count = count + 1 WHERE user_id = ? AND date = ? AND count < ?'
+    )
+    .bind(user.id, today, dailyLimit)
+    .run()
 
-  if (!existing) {
-    // First use today - insert
-    await env.DB
-      .prepare('INSERT INTO usage (id, user_id, date, count) VALUES (?, ?, ?, 1)')
-      .bind(crypto.randomUUID(), user.id, today)
-      .run()
-    return json({ allowed: true, remaining: dailyLimit - 1 })
-  }
+  if (result.meta.changes === 0) {
+    // Either first use today (no row exists) or limit already reached
+    const current = await env.DB
+      .prepare('SELECT count FROM usage WHERE user_id = ? AND date = ?')
+      .bind(user.id, today)
+      .first<{ count: number }>()
 
-  if (existing.count >= dailyLimit) {
+    if (!current) {
+      // First use today - insert with count=1 (idempotent)
+      try {
+        await env.DB
+          .prepare('INSERT INTO usage (id, user_id, date, count) VALUES (?, ?, ?, 1)')
+          .bind(crypto.randomUUID(), user.id, today)
+          .run()
+        return json({ allowed: true, remaining: dailyLimit - 1 })
+      } catch {
+        // Another request inserted first - retry the conditional update
+        const retry = await env.DB
+          .prepare('UPDATE usage SET count = count + 1 WHERE user_id = ? AND date = ? AND count < ?')
+          .bind(user.id, today, dailyLimit)
+          .run()
+        if (retry.meta.changes === 0) {
+          return json({ allowed: false, remaining: 0, limit: dailyLimit, limit_reached: true })
+        }
+        return json({ allowed: true, remaining: dailyLimit - 2 })
+      }
+    }
+
     return json({
       allowed: false,
       remaining: 0,
@@ -484,16 +505,88 @@ async function handleUse(request: Request, env: Env) {
     })
   }
 
-  // Increment count
-  await env.DB
-    .prepare('UPDATE usage SET count = count + 1 WHERE user_id = ? AND date = ?')
+  // Get updated remaining count
+  const updated = await env.DB
+    .prepare('SELECT count FROM usage WHERE user_id = ? AND date = ?')
     .bind(user.id, today)
-    .run()
+    .first<{ count: number }>()
 
+  const remaining = Math.max(0, dailyLimit - (updated?.count ?? 1))
   return json({
     allowed: true,
-    remaining: dailyLimit - existing.count - 1,
+    remaining,
   })
+}
+
+// P1-4 Fix: Process endpoint - deducts quota ONLY after successful processing
+async function handleProcess(request: Request, env: Env) {
+  if (request.method !== 'POST') {
+    return createError(405, 'Method not allowed')
+  }
+
+  const user = await getAuthenticatedUser(request, env)
+  if (!user) return createError(401, 'Unauthorized')
+
+  let body: { image_data?: string }
+  try {
+    body = await request.json()
+  } catch {
+    return createError(400, 'Invalid JSON')
+  }
+
+  const imageData = body.image_data
+  if (!imageData) {
+    return createError(400, 'Missing image_data')
+  }
+
+  // TODO: Integrate with remove.bg API here
+  // For now, we simulate successful processing
+  // const result = await removeBg(imageData, env.REMOVE_BG_API_KEY)
+  // if (!result.success) return createError(500, 'Processing failed')
+
+  const today = getToday()
+  const dailyLimit = getDailyLimit(user.plan)
+
+  // P1-5 Fix: Atomic conditional update - only deduct on successful processing
+  const result = await env.DB
+    .prepare(
+      'UPDATE usage SET count = count + 1 WHERE user_id = ? AND date = ? AND count < ?'
+    )
+    .bind(user.id, today, dailyLimit)
+    .run()
+
+  if (result.meta.changes === 0) {
+    const current = await env.DB
+      .prepare('SELECT count FROM usage WHERE user_id = ? AND date = ?')
+      .bind(user.id, today)
+      .first<{ count: number }>()
+
+    if (!current) {
+      // First use today - insert with count=1
+      try {
+        await env.DB
+          .prepare('INSERT INTO usage (id, user_id, date, count) VALUES (?, ?, ?, 1)')
+          .bind(crypto.randomUUID(), user.id, today)
+          .run()
+      } catch {
+        // Another request inserted first - retry conditional update
+        const retry = await env.DB
+          .prepare('UPDATE usage SET count = count + 1 WHERE user_id = ? AND date = ? AND count < ?')
+          .bind(user.id, today, dailyLimit)
+          .run()
+        if (retry.meta.changes === 0) {
+          return json({ success: false, error: 'Quota exceeded', limit_reached: true })
+        }
+      }
+    } else {
+      return json({ success: false, error: 'Quota exceeded', limit_reached: true })
+    }
+  }
+
+  // Processing succeeded and quota deducted - return success
+  // TODO: Return actual processed image when remove.bg is integrated
+  // return json({ success: true, image: result.image })
+  return json({ success: true })
 }
 
 // ─── CORS Headers ─────────────────────────────────────────────────────────────
@@ -553,6 +646,8 @@ export default {
       response = await handleStats(request, env)
     } else if (path.startsWith('/api/use')) {
       response = await handleUse(request, env)
+    } else if (path.startsWith('/api/process')) {
+      response = await handleProcess(request, env)
     } else {
       response = createError(404, 'Not found')
     }

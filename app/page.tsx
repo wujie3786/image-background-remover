@@ -149,28 +149,35 @@ export default function Home() {
     setError(null)
 
     try {
-      // Record usage
-      const res = await apiFetch('/api/use', { method: 'POST' })
+      // Call process endpoint: checks quota → processes image → deducts on success
+      // TODO: send actual image_data to /api/process for remove.bg integration
+      const res = await apiFetch('/api/process', {
+        method: 'POST',
+        body: JSON.stringify({ image_data: originalImage }),
+      })
       const data = res ? await res.json() : null
 
-      if (!res || !res.ok || !data?.allowed) {
-        setError(data?.limit_reached
-          ? `今日次数已用完（${stats?.today_count}/${stats?.daily_limit}）。升级 Pro 可享每日 50 次。`
-          : '无法使用工具，请重试。')
+      if (!res || !res.ok || !data?.success) {
+        if (data?.limit_reached) {
+          setError(`今日次数已用完（${stats?.today_count}/${stats?.daily_limit}）。升级 Pro 可享每日 50 次。`)
+          setStats((s) => s ? { ...s, can_use: false, today_remaining: 0 } : null)
+        } else {
+          setError('处理失败，请重试。')
+        }
         setIsLoading(false)
         return
       }
 
-      // Update local stats
+      // Update local stats optimistically
       setStats((s) => s ? {
         ...s,
         today_count: s.today_count + 1,
-        today_remaining: s.today_remaining - 1,
+        today_remaining: Math.max(0, s.today_remaining - 1),
         can_use: s.today_remaining - 1 > 0,
       } : null)
 
-      // Call remove.bg API (mock for now)
-      // TODO: integrate actual remove.bg
+      // TODO: use data.image when remove.bg is integrated
+      // For now, show the original image as processed (placeholder)
       setTimeout(() => {
         setProcessedImage(originalImage)
         setIsLoading(false)
