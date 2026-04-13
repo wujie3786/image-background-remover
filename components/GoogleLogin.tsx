@@ -43,7 +43,7 @@ function LoginButton({ onSuccess, onError }: GoogleLoginButtonProps) {
     <GoogleLogin
       onSuccess={handleSuccess}
       onError={() => onError('Google 登录失败，请重试')}
-      useOneTap
+      useOneTap={false}
       theme="outline"
       size="large"
       text="signin_with"
